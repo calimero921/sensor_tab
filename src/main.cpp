@@ -24,6 +24,9 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <Adafruit_NeoPixel.h>
+#include <SPI.h>
+#include <MFRC522.h>
 
 BLEServer* pServer = NULL;
 BLECharacteristic* pLedCharacteristic = NULL;
@@ -75,8 +78,22 @@ class RfidCharacteristicCallbacks: public BLECharacteristicCallbacks {
     }
 };
 
+// configuration Adafruit_NeoPixel
+#define PINPIXELS 14
+#define NUMPIXELS 8
+Adafruit_NeoPixel pixels(NUMPIXELS, PINPIXELS, NEO_GRB + NEO_KHZ800);
+void switchOffPixels();
+
+// configuration MFRC522
+#define MFRC522RESETPIN 22
+#define MFRC522SELECTPIN 21
+
+MFRC522 mfrc522 = MFRC522(MFRC522SELECTPIN, MFRC522RESETPIN);
+void ShowReaderDetails();
+
 void setup() {
   Serial.begin(115200);
+  SPI.begin();
 
   // Create the BLE Device
   BLEDevice::init(device_name);
@@ -135,21 +152,47 @@ void setup() {
   pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
   BLEDevice::startAdvertising();
   Serial.println("Waiting a client connection to notify...");
+
+  // Adafruit_NeoPixel
+  pixels.begin();
+  switchOffPixels();
+
+  // MFRC522
+  mfrc522.PCD_Init();
+  mfrc522.PCD_DumpVersionToSerial();
 }
 
 void loop() {
     // notify changed value
     if (deviceConnected) {
-        // pRfidCharacteristic->setValue((uint8_t*)&value, 4);
-        // pRfidCharacteristic->notify();
-        // value++;
-        // delay(10); // bluetooth stack will go into congestion, if too many packets are sent, in 6 hours test i was able to go as low as 3ms
+      pixels.clear();
+      for(int i=0; i<NUMPIXELS; i++) {
+        pixels.setPixelColor(i, pixels.Color(0, 150, 0));
+        pixels.show();
+        delay(50);
+      }
+      for(int i=0; i<NUMPIXELS; i++) {
+        pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+        pixels.show();
+        delay(50);
+      }
+      // Look for new cards
+      if ( ! mfrc522.PICC_IsNewCardPresent()) {
+      	return;
+      }
+      // Select one of the cards
+      if ( ! mfrc522.PICC_ReadCardSerial()) {
+      	return;
+      }
+      // Dump debug info about the card; PICC_HaltA() is automatically called
+      mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
     }
     // disconnecting
     if (!deviceConnected && oldDeviceConnected) {
         delay(500); // give the bluetooth stack the chance to get things ready
         pAdvertising->start();
         // pServer->startAdvertising(); // restart advertising
+        switchOffPixels();
         Serial.println("start advertising");
         oldDeviceConnected = deviceConnected;
     }
@@ -158,4 +201,30 @@ void loop() {
         // do stuff here on connecting
         oldDeviceConnected = deviceConnected;
     }
+}
+
+void switchOffPixels() {
+  pixels.clear();
+  for(int i=0; i<NUMPIXELS; i++) {
+    pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+  }
+  pixels.show();
+}
+
+void ShowReaderDetails() {
+	// Get the MFRC522 software version
+	byte v = mfrc522.PCD_ReadRegister(mfrc522.VersionReg);
+	Serial.print(F("MFRC522 Software Version: 0x"));
+	Serial.print(v, HEX);
+	if (v == 0x91)
+		Serial.print(F(" = v1.0"));
+	else if (v == 0x92)
+		Serial.print(F(" = v2.0"));
+	else
+		Serial.print(F(" (unknown)"));
+	Serial.println("");
+	// When 0x00 or 0xFF is returned, communication probably failed
+	if ((v == 0x00) || (v == 0xFF)) {
+		Serial.println(F("WARNING: Communication failure, is the MFRC522 properly connected?"));
+	}
 }
