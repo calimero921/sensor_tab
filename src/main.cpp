@@ -28,6 +28,7 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include <NDEF.h>
+#include <ArduinoJson.h>
 
 BLEServer* pServer = NULL;
 BLECharacteristic* pLedCharacteristic = NULL;
@@ -100,7 +101,10 @@ byte keyGArray[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 byte keyAArray[] = {0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5};
 byte keyBArray[] = {0xD3, 0xF7, 0xD3, 0xF7, 0xD3, 0xF7};
 
+StaticJsonDocument<1024> jsonDoc;
+
 void readRFIDCard(int reader);
+long convertHtmlColorToLong(const char* color);
 void printHex(byte *buffer, byte bufferSize);
 void printChar(byte *buffer, byte bufferSize);
 void printDec(byte *buffer, byte bufferSize);
@@ -217,8 +221,8 @@ void loop() {
 }
 
 void switchOffPixels() {
-  pixels.clear();
   for(int i=0; i<NUMPIXELS; i++) {
+    pixels.clear();
     pixels.setPixelColor(i, 0, 0, 0);
     pixels.show();
   }
@@ -301,12 +305,13 @@ void readRFIDCard(int reader) {
     Serial.print("count : ");
     Serial.print(count);
   }
-  Serial.println("");
-  Serial.print("Payload : ");
-  printHex((byte*)payload, count);
-  Serial.println("");
-  Serial.print("Payload : ");
-  printChar((byte*)payload, count);
+  Serial.println();
+  // Serial.print("Payload : ");
+  // printHex((byte*)payload, count);
+  // Serial.println();
+  // Serial.print("Payload : ");
+  // printChar((byte*)payload, count);
+  // Serial.println();
 
   char message[PAYLOAD_SIZE] = {};
   for (int i = 0; i < count; i++) {
@@ -315,10 +320,10 @@ void readRFIDCard(int reader) {
     }
   }
 
+  // Serial.println();
   Serial.println("conversion message:");
   FOUND_MESSAGE result = NDEF().decode_message((uint8_t*)message);
 
-  Serial.println();
   Serial.print("type : ");
   Serial.print(result.type);
   Serial.println();
@@ -329,6 +334,30 @@ void readRFIDCard(int reader) {
   Serial.print((char*)result.payload);
   Serial.println();
 
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(jsonDoc, (char*)result.payload);
+
+  // Test if parsing succeeds.
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.c_str());
+    return;
+  }
+
+  const char* color = jsonDoc["color"];
+  Serial.print("color : ");
+  Serial.print(color);
+  Serial.println();
+
+  long pixelColor = convertHtmlColorToLong(color);
+  pixels.clear();
+  pixels.setPixelColor(NUMPIXELS-1, pixelColor);
+  pixels.show();
+  const char* format = jsonDoc["format"];
+  Serial.print("format : ");
+  Serial.print(format);
+  Serial.println();
+
   // Halt PICC
   board.PICC_HaltA();
   // Stop encryption on PCD
@@ -336,6 +365,20 @@ void readRFIDCard(int reader) {
   board.PCD_SoftPowerDown();
 }
 
+long convertHtmlColorToLong(const char* color) {
+  char hexStr[9] = {'0','x','0','0','0','0','0','0','\0'};
+  hexStr[2] = color[1];
+  hexStr[3] = color[2];
+  hexStr[4] = color[3];
+  hexStr[5] = color[4];
+  hexStr[6] = color[5];
+  hexStr[7] = color[6];
+  long result = strtoul(hexStr, NULL, 16);
+  Serial.print("convertHtmlColorToLong : ");
+  Serial.print(result, HEX);
+  Serial.println();
+  return result;
+}
 /**
 * Helper routine to dump a byte array as hex values to Serial.
 */

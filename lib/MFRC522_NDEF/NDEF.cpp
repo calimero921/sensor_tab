@@ -13,13 +13,14 @@ FOUND_MESSAGE NDEF::decode_message(uint8_t * msg) {
     bool il = (*(msg + offset) & 0x08) == 0x08;        /* ID Length Present */
     uint8_t tnf = (*(msg + offset) & 0x07);
     offset++;
+#ifdef DEBUG
     Serial.print("mb : "); Serial.println(mb);
     Serial.print("me : "); Serial.println(me);
     Serial.print("cf : "); Serial.println(cf);
     Serial.print("sr : "); Serial.println(sr);
     Serial.print("il : "); Serial.println(il);
     Serial.print("tnf : "); Serial.println(tnf);
-
+#endif
     if (cf) {
         Serial.println("chunk flag not supported yet");
         m.type = 0;
@@ -27,8 +28,10 @@ FOUND_MESSAGE NDEF::decode_message(uint8_t * msg) {
     }
 
     int typeLength = *(msg + offset);
-    Serial.print("typeLength : "); Serial.println(typeLength);
     offset++;
+#ifdef DEBUG
+    Serial.print("typeLength : "); Serial.println(typeLength);
+#endif
 
     int payloadLength;
     if (sr) {
@@ -38,14 +41,18 @@ FOUND_MESSAGE NDEF::decode_message(uint8_t * msg) {
     } else {
         offset += 4;
     }
+#ifdef DEBUG
     Serial.print("payloadLength : "); Serial.println(payloadLength);
+#endif
 
     int idLength = 0;
     if (il) {
         idLength = *(msg + offset);
         offset++;
     }
+#ifdef DEBUG
     Serial.print("idLength : "); Serial.println(idLength);
+#endif
 
     switch ((int)tnf) {
         case 1: {
