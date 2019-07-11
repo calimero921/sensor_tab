@@ -30,6 +30,8 @@
 #include <NDEF.h>
 #include <ArduinoJson.h>
 
+#include "main.h"
+
 BLEServer* pServer = NULL;
 BLECharacteristic* pLedCharacteristic = NULL;
 BLECharacteristic* pRfidCharacteristic = NULL;
@@ -43,12 +45,6 @@ char device_name[] = "DIPONGO-TAB-ESP32";
 
 BLEAdvertisementData advertisement;
 BLEAdvertising *pAdvertising;
-
-// See the following for generating UUIDs:
-// https://www.uuidgenerator.net/
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define LED_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-#define RFID_CHARACTERISTIC_UUID "bb23e586-ce7c-4bc7-b3fb-b5f88a0f3277"
 
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
@@ -81,16 +77,11 @@ class RfidCharacteristicCallbacks: public BLECharacteristicCallbacks {
 };
 
 // configuration Adafruit_NeoPixel
-#define PINPIXELS 17
-#define NUMPIXELS 1
-Adafruit_NeoPixel pixels(NUMPIXELS, PINPIXELS, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels(PIXELNUMBER, PIXELDATAPIN, NEO_GRB + NEO_KHZ800);
 void switchOffPixels();
 
 // configuration MFRC522
-#define MFRC522COUNT 1
-#define MFRC522SELECT1PIN 12
-#define MFRC522RESETPIN 22
-MFRC522 board = MFRC522(MFRC522SELECT1PIN, MFRC522RESETPIN);
+MFRC522 board = MFRC522(MFRC522SDAPIN, MFRC522RESETPIN);
 
 #define PAYLOAD_SIZE 1024
 char payload[PAYLOAD_SIZE] = {};
@@ -103,16 +94,30 @@ byte keyBArray[] = {0xD3, 0xF7, 0xD3, 0xF7, 0xD3, 0xF7};
 
 StaticJsonDocument<1024> jsonDoc;
 
-void readRFIDCard(int reader);
-long convertHtmlColorToLong(const char* color);
-void printHex(byte *buffer, byte bufferSize);
-void printChar(byte *buffer, byte bufferSize);
-void printDec(byte *buffer, byte bufferSize);
-void longToByteArray(long inLong, byte* outArray);
-void readBlock(byte index, byte *buffer);
-
 void setup() {
   Serial.begin(115200);
+
+  // Adafruit_NeoPixel
+  pixels.begin();
+  switchOffPixels();
+
+  // multiplexeur
+  pinMode(MULTIPLEXADR0, OUTPUT);
+  pinMode(MULTIPLEXADR1, OUTPUT);
+  pinMode(MULTIPLEXADR2, OUTPUT);
+  pinMode(MULTIPLEXADR3, OUTPUT);
+
+  // initialisation des lecteurs;
+  SPI.begin();
+  for(int i = 0 ; i < MFRC522COUNT ; i++) {
+    // selection du Lecteur
+    selectReader(i);
+
+    // MFRC522
+    board.PCD_Init();
+    board.PCD_DumpVersionToSerial();
+    board.PCD_SoftPowerDown();
+  }
 
   // Create the BLE Device
   BLEDevice::init(device_name);
@@ -171,16 +176,6 @@ void setup() {
   pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
   BLEDevice::startAdvertising();
   Serial.println("Waiting a client connection to notify...");
-
-  // Adafruit_NeoPixel
-  pixels.begin();
-  pixels.show();
-
-  // MFRC522
-  SPI.begin();
-  board.PCD_Init();
-  board.PCD_DumpVersionToSerial();
-  board.PCD_SoftPowerDown();
 }
 
 void loop() {
@@ -188,22 +183,24 @@ void loop() {
 
   // notify changed value
   if (deviceConnected) {
-    // for(int reader=0; reader<MFRC522COUNT; reader++) {
-      int reader = 0;
+    for(int reader = 0; reader < MFRC522COUNT; reader++) {
       readRFIDCard(reader);
-    // }
+      // delay(100);
+    }
   }
-  delay(1000);
 
   // disconnecting
   if (!deviceConnected && oldDeviceConnected) {
     delay(500); // give the bluetooth stack the chance to get things ready
 
     // shutting down readers
-    board.PCD_SoftPowerDown();
+    for(int reader=0; reader < MFRC522COUNT; reader++) {
+      selectReader(reader);
+      board.PCD_SoftPowerDown();
+    }
 
     pixels.clear();
-    pixels.setPixelColor(NUMPIXELS-1, 0, 0, 0);
+    pixels.setPixelColor(PIXELNUMBER-1, 0, 0, 0);
     pixels.show();
 
     pAdvertising->start();
@@ -213,7 +210,7 @@ void loop() {
   // connecting
   if (deviceConnected && !oldDeviceConnected) {
     pixels.clear();
-    pixels.setPixelColor(NUMPIXELS-1, 0, 32, 0);
+    pixels.setPixelColor(PIXELNUMBER-1, 0, 32, 0);
     pixels.show();
     // do stuff here on connecting
     oldDeviceConnected = deviceConnected;
@@ -221,17 +218,47 @@ void loop() {
 }
 
 void switchOffPixels() {
-  for(int i=0; i<NUMPIXELS; i++) {
+  for(int i=0; i<PIXELNUMBER; i++) {
     pixels.clear();
     pixels.setPixelColor(i, 0, 0, 0);
     pixels.show();
   }
 }
 
+void selectReader(int reader) {
+  Serial.print("Reader to call : ");
+  Serial.print(reader);
+
+  // arret du lecteur en cours
+  // board.PCD_SoftPowerDown();
+
+  Serial.print(" -> 0x");
+  // selection du lecteur par le multiplexeur
+  Serial.print(bitRead(reader, 3) == 0 ? LOW : HIGH);
+  digitalWrite(MULTIPLEXADR2, bitRead(reader, 3) == 0 ? LOW : HIGH);
+
+  Serial.print(bitRead(reader, 2) == 0 ? LOW : HIGH);
+  digitalWrite(MULTIPLEXADR2, bitRead(reader, 2) == 0 ? LOW : HIGH);
+
+  Serial.print(bitRead(reader, 1) == 0 ? LOW : HIGH);
+  digitalWrite(MULTIPLEXADR1, bitRead(reader, 1) == 0 ? LOW : HIGH);
+
+  Serial.print(bitRead(reader, 0) == 0 ? LOW : HIGH);
+  digitalWrite(MULTIPLEXADR0, bitRead(reader, 0) == 0 ? LOW : HIGH);
+  Serial.println();
+
+  // attente d'établissement du multiplexeur
+  // delay(40);
+
+  // activation du lecteur selectionné
+  // board.PCD_SoftPowerUp();
+}
+
 void readRFIDCard(int reader) {
   Serial.print("Lecteur ");
   Serial.print(reader);
-  Serial.println("...");
+  Serial.println(" ...");
+  selectReader(reader);
 
   // Look for new cards
   if ( ! board.PICC_IsNewCardPresent()) {
@@ -351,7 +378,7 @@ void readRFIDCard(int reader) {
 
   long pixelColor = convertHtmlColorToLong(color);
   pixels.clear();
-  pixels.setPixelColor(NUMPIXELS-1, pixelColor);
+  pixels.setPixelColor(reader, pixelColor);
   pixels.show();
   const char* format = jsonDoc["format"];
   Serial.print("format : ");
