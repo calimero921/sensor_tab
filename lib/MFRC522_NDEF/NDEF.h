@@ -54,6 +54,7 @@ struct FOUND_MESSAGE{
     int type;
     char * format;
     uint8_t * payload;
+    bool error;
 };
 
 class NDEF{

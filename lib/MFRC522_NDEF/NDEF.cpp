@@ -5,6 +5,7 @@ NDEF::NDEF(){}
 FOUND_MESSAGE NDEF::decode_message(uint8_t * msg) {
     int offset = 2;
     FOUND_MESSAGE m;
+    m.error = false;
 
     bool mb = (*(msg + offset) & 0x80) == 0x80;        /* Message Begin */
     bool me = (*(msg + offset) & 0x40) == 0x40;        /* Message End */
@@ -93,6 +94,7 @@ FOUND_MESSAGE NDEF::decode_message(uint8_t * msg) {
                 default: {
                     Serial.println("err, NDEF type: ");
                     Serial.println((char)m.type);
+                    m.error = true;
                     break;
                 }
             }
@@ -123,6 +125,7 @@ FOUND_MESSAGE NDEF::decode_message(uint8_t * msg) {
         default: {
           Serial.println("err, unknown tnf :");
           Serial.println(tnf);
+          m.error = true;
           break;
         }
     }
