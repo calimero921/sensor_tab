@@ -1,86 +1,120 @@
 #include "pixelManager.h"
 #include <Adafruit_NeoPixel.h>
 
-int pixelNumber = 0;
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel();
 
-PixelManager::PixelManager(uint16_t pixelNb) {
-  pixelNumber = pixelNb;
+PixelManager::PixelManager(uint16_t pixelNb)
+{
+  pixelCount = pixelNb;
 }
 
-PixelManager::~PixelManager() {
+PixelManager::~PixelManager()
+{
 }
 
-void PixelManager::init() {
-  Serial.println("PixelManager::Pixel manager initialisation...");
+void PixelManager::init()
+{
+  //Serial.println("PixelManager::Pixel manager initialisation...");
 
   // configuration Adafruit_NeoPixel
-  Serial.println("PixelManager::Pixel manager setting parameters...");
-  pixels.updateLength(pixelNumber);
+  //Serial.println("PixelManager::Pixel manager setting parameters...");
+  pixels.updateLength(pixelCount);
   pixels.setPin(PIXELDATAPIN);
   pixels.updateType(NEO_GRB + NEO_KHZ800);
 
-  Serial.println("PixelManager::Pixel manager starting...");
+  //Serial.println("PixelManager::Pixel manager starting...");
   pixels.begin();
 }
 
-void PixelManager::switchOffAllPixels() {
-  Serial.println("PixelManager::Shuttingdown all pixels...");
-  for(int i=0; i<pixelNumber; i++) {
+void PixelManager::switchOffAllPixels()
+{
+  //Serial.println("PixelManager::Shuttingdown all pixels...");
+  for (int i = 0; i < pixelCount; i++)
+  {
     switchOffPixel(i);
   }
 }
 
-void PixelManager::switchOffPixel(uint16_t pixelNum) {
-  Serial.print("PixelManager::shuttingdown pixel:");
-  Serial.println(pixelNum);
+void PixelManager::switchOffPixel(uint16_t pixelNum)
+{
+  //Serial.print("PixelManager::shuttingdown pixel:");
+  //Serial.println(pixelNum);
   pixels.clear();
   pixels.setPixelColor(pixelNum, 0, 0, 0);
   pixels.show();
 }
 
-void PixelManager::setPixelColor(uint16_t pixelNum, uint32_t pixelColor) {
-  Serial.print("PixelManager::Starting pixel:");
-  Serial.print(pixelNum);
-  Serial.print(" with color:");
-  Serial.println(pixelColor);
+void PixelManager::setPixelState(ReaderState *readerState)
+{
+  //Serial.println("PixelManager::setPixelState:started");
   pixels.clear();
-  // pixels.setPixelColor(pixelNum, pixelColor);
-  pixels.fill(pixelColor);
+  //Serial.print("PixelManager::setPixelState:readerState.count():");
+  //Serial.println(readerState->count());
+  for (uint16_t pixel = 0; pixel < readerState->count(); pixel++)
+  {
+    //Serial.print("PixelManager::setPixelState:pixel:");
+    //Serial.println(pixel);
+
+    String pixelColorHtml = readerState->getState(pixel).color();
+    //Serial.print("PixelManager::setPixelState:pixelColorHtml:");
+    //Serial.println(pixelColorHtml);
+
+    uint32_t pixelColor = convertHtmlColorToLong(pixelColorHtml);
+    //Serial.print("PixelManager::setPixelState:pixelColor:");
+    //Serial.println(pixelColor);
+
+    pixels.setPixelColor(pixel, pixelColor);
+  }
+  pixels.show();
+  //Serial.println("PixelManager::setPixelState:finished");
+}
+
+void PixelManager::setPixelColor(uint16_t pixelNum, uint32_t pixelColor)
+{
+  //Serial.print("PixelManager::Starting pixel:");
+  //Serial.print(pixelNum);
+  //Serial.print(" with color:");
+  //Serial.println(pixelColor);
+  pixels.clear();
+  pixels.setPixelColor(pixelNum, pixelColor);
+  //pixels.fill(pixelColor);
   pixels.show();
 }
 
-void PixelManager::setPixelRGB(uint16_t pixelNum, uint16_t pixelRed, uint16_t pixelGreen, uint16_t pixelBlue) {
+void PixelManager::setPixelRGB(uint16_t pixelNum, uint16_t pixelRed, uint16_t pixelGreen, uint16_t pixelBlue)
+{
   pixels.clear();
   pixels.setPixelColor(pixelNum, pixelRed, pixelGreen, pixelBlue);
   pixels.show();
 }
 
-void PixelManager::setPixelText(uint16_t pixelNum, String pixelColorHtml) {
-  Serial.print("PixelManager::Starting pixel:");
-  Serial.print(pixelNum);
-  Serial.print(" with HTML color:");
-  Serial.println(pixelColorHtml);
+void PixelManager::setPixelText(uint16_t pixelNum, String pixelColorHtml)
+{
+  //Serial.print("PixelManager::Starting pixel:");
+  //Serial.print(pixelNum);
+  //Serial.print(" with HTML color:");
+  //Serial.println(pixelColorHtml);
   uint32_t pixelColor = convertHtmlColorToLong(pixelColorHtml);
   setPixelColor(pixelNum, pixelColor);
 }
 
-uint32_t PixelManager::convertHtmlColorToLong(String pixelColorHtml) {
-  Serial.print("PixelManager::convertHtmlColorToLong:");
-  Serial.println(pixelColorHtml);
+uint32_t PixelManager::convertHtmlColorToLong(String pixelColorHtml)
+{
+  //Serial.print("PixelManager::convertHtmlColorToLong:");
+  //Serial.println(pixelColorHtml);
   char buffer[pixelColorHtml.length() + 1];
   pixelColorHtml.toCharArray(buffer, pixelColorHtml.length() + 1);
-  char hexStr[9] = {'0','x','0','0','0','0','0','0','\0'};
+  char hexStr[9] = {'0', 'x', '0', '0', '0', '0', '0', '0', '\0'};
   hexStr[2] = buffer[1];
   hexStr[3] = buffer[2];
   hexStr[4] = buffer[3];
   hexStr[5] = buffer[4];
   hexStr[6] = buffer[5];
   hexStr[7] = buffer[6];
-  Serial.print("PixelManager::convertHtmlColorToLong:");
-  Serial.println(hexStr);
+  //Serial.print("PixelManager::convertHtmlColorToLong:");
+  //Serial.println(hexStr);
   uint32_t result = strtoul(hexStr, NULL, 16);
-  Serial.print("PixelManager::convertHtmlColorToLong:");
-  Serial.println(result, HEX);
+  //Serial.print("PixelManager::convertHtmlColorToLong:");
+  //Serial.println(result, HEX);
   return result;
 }

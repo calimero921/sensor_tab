@@ -22,28 +22,31 @@
 
 #define PAYLOAD_SIZE 1024
 
-class CardReader {
-  public:
-    CardReader(int nbCardReader);
-    ~CardReader();
-    void init();
-    RfidData readRFIDCard(int reader);
-    void shutdownAllReaders();
-    void shutdownReader(int reader);
+//#define DEBUG
 
-  private:
-    uint16_t countCardReader;
-    MFRC522 board;
+class CardReader
+{
+public:
+  CardReader(int nbCardReader);
+  ~CardReader();
+  void init();
+  RfidData readRFIDCard(int reader);
+  void shutdownAllReaders();
+  void shutdownReader(int reader);
 
-    void selectReader(int reader);
-    void readBlock(byte index, byte *buffer);
-    RfidData convertMessage(const char* message);
+private:
+  uint16_t countCardReader;
+  MFRC522 board;
 
-    // long convertHtmlColorToLong(const char* color);
-    byte* longToByteArray(long inLong);
+  void selectReader(int reader);
+  void readBlock(byte index, byte *buffer);
+  RfidData convertMessage(char *message);
 
-    void printHex(byte *buffer, byte bufferSize);
-    void printChar(byte *buffer, byte bufferSize);
-    void printDec(byte *buffer, byte bufferSize);
+  // long convertHtmlColorToLong(const char* color);
+  byte *longToByteArray(long inLong);
+
+  void printHex(byte *buffer, byte bufferSize);
+  void printChar(byte *buffer, byte bufferSize);
+  void printDec(byte *buffer, byte bufferSize);
 };
 #endif

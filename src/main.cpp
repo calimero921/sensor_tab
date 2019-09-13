@@ -24,15 +24,16 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
-#include <ArduinoJson.h>
 
 #include "main.h"
 #include "cardReader.h"
+#include "rfidData.h"
 #include "pixelManager.h"
+#include "readerState.h"
 
-BLEServer* pServer = NULL;
-BLECharacteristic* pLedCharacteristic = NULL;
-BLECharacteristic* pRfidCharacteristic = NULL;
+BLEServer *pServer = NULL;
+BLECharacteristic *pLedCharacteristic = NULL;
+BLECharacteristic *pRfidCharacteristic = NULL;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 uint32_t value = 0;
@@ -41,53 +42,75 @@ int manufacturer_code = 0xFFFF;
 char manufacturer_name[] = "DIPONGO";
 char device_name[] = "DIPONGO-TAB-ESP32";
 
-BLEAdvertisementData advertisement;
-BLEAdvertising *pAdvertising;
+// Configuration readerState
+ReaderState readerState = ReaderState(MFRC522COUNT);
 
-class MyServerCallbacks: public BLEServerCallbacks {
-    void onConnect(BLEServer* pServer) {
-      deviceConnected = true;
-      BLEDevice::startAdvertising();
-    };
-
-    void onDisconnect(BLEServer* pServer) {
-      deviceConnected = false;
-    }
-};
-
-class LedCharacteristicCallbacks: public BLECharacteristicCallbacks {
-    void onRead(BLECharacteristic* pCharacteristic) {
-      pCharacteristic->setValue("lecture tableau de led");
-    }
-
-    void onWrite(BLECharacteristic* pCharacteristic) {
-      std::string value = pCharacteristic->getValue();
-      Serial.print("Received Value: ");
-      for (int i = 0; i < value.length(); i++)
-        Serial.print(value[i]);
-      Serial.println();    }
-};
-
-class RfidCharacteristicCallbacks: public BLECharacteristicCallbacks {
-    void onRead(BLECharacteristic* pCharacteristic) {
-      pCharacteristic->setValue("lecture tableau rfid");
-    }
-};
-
-// // configuration Adafruit_NeoPixel
+// Configuration Adafruit_NeoPixel
 // Adafruit_NeoPixel pixels(PIXELNUMBER, PIXELDATAPIN, NEO_GRB + NEO_KHZ800);
 PixelManager pixelStrip = PixelManager(PIXELCOUNT);
 
-// configuration MFRC522
+// Configuration MFRC522
 CardReader cardReader = CardReader(MFRC522COUNT);
 
-void setup() {
+BLEAdvertisementData advertisement;
+BLEAdvertising *pAdvertising;
+
+class MyServerCallbacks : public BLEServerCallbacks
+{
+  void onConnect(BLEServer *pServer)
+  {
+    deviceConnected = true;
+    BLEDevice::startAdvertising();
+  };
+
+  void onDisconnect(BLEServer *pServer)
+  {
+    deviceConnected = false;
+  }
+};
+
+class LedCharacteristicCallbacks : public BLECharacteristicCallbacks
+{
+  void onRead(BLECharacteristic *pCharacteristic)
+  {
+    String jsonString = readerState.toJsonString(true, false);
+    uint16_t arraySize = jsonString.length();
+    char results[arraySize];
+    jsonString.toCharArray(results, arraySize);
+    pCharacteristic->setValue(results);
+  }
+
+  void onWrite(BLECharacteristic *pCharacteristic)
+  {
+    std::string value = pCharacteristic->getValue();
+    Serial.print("Received Value: ");
+    for (int i = 0; i < value.length(); i++)
+      Serial.print(value[i]);
+    Serial.println();
+  }
+};
+
+class RfidCharacteristicCallbacks : public BLECharacteristicCallbacks
+{
+  void onRead(BLECharacteristic *pCharacteristic)
+  {
+    String jsonString = readerState.toJsonString(false, true);
+    uint16_t arraySize = jsonString.length();
+    char results[arraySize];
+    jsonString.toCharArray(results, arraySize);
+    pCharacteristic->setValue(results);
+  }
+};
+
+void setup()
+{
   Serial.begin(115200);
   Serial.println("Main::Setup");
-  pixelStrip.init();
-  cardReader.init();
 
+  pixelStrip.init();
   pixelStrip.switchOffAllPixels();
+
+  cardReader.init();
 
   // Create the BLE Device
   BLEDevice::init(device_name);
@@ -113,12 +136,11 @@ void setup() {
 
   // Create a BLE led Characteristic
   pLedCharacteristic = pService->createCharacteristic(
-                      LED_CHARACTERISTIC_UUID,
-                      BLECharacteristic::PROPERTY_READ   |
-                      BLECharacteristic::PROPERTY_WRITE  |
-                      BLECharacteristic::PROPERTY_NOTIFY |
-                      BLECharacteristic::PROPERTY_INDICATE
-                    );
+      LED_CHARACTERISTIC_UUID,
+      BLECharacteristic::PROPERTY_READ |
+          BLECharacteristic::PROPERTY_WRITE |
+          BLECharacteristic::PROPERTY_NOTIFY |
+          BLECharacteristic::PROPERTY_INDICATE);
   // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
   // Create a BLE Descriptor
   pLedCharacteristic->addDescriptor(new BLE2902());
@@ -126,11 +148,10 @@ void setup() {
 
   // Create a BLE led Characteristic
   pRfidCharacteristic = pService->createCharacteristic(
-                      RFID_CHARACTERISTIC_UUID,
-                      BLECharacteristic::PROPERTY_READ   |
-                      BLECharacteristic::PROPERTY_NOTIFY |
-                      BLECharacteristic::PROPERTY_INDICATE
-                    );
+      RFID_CHARACTERISTIC_UUID,
+      BLECharacteristic::PROPERTY_READ |
+          BLECharacteristic::PROPERTY_NOTIFY |
+          BLECharacteristic::PROPERTY_INDICATE);
   // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
   // Create a BLE Descriptor
   pRfidCharacteristic->addDescriptor(new BLE2902());
@@ -143,68 +164,73 @@ void setup() {
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(false);
-  pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
+  pAdvertising->setMinPreferred(0x0); // set value to 0x00 to not advertise this parameter
   BLEDevice::startAdvertising();
   Serial.println("Main::Waiting a client connection to notify...");
 }
 
-void loop() {
-  // memset(payload, 0, PAYLOAD_SIZE);
-
+void loop()
+{
   // notify changed value
-  if (deviceConnected) {
-    Serial.println("Main::Device connected...");
-    StaticJsonDocument<1024> jsonArray;
-    for(int reader = 0; reader < MFRC522COUNT; reader++) {
-      Serial.print("Main::Using reader ");
-      Serial.print(reader);
-      Serial.println(" ...");
+  if (deviceConnected)
+  {
+    //Serial.println("Main::Device connected...");
+    boolean hasChanged = false;
+    for (int reader = 0; reader < MFRC522COUNT; reader++)
+    {
+      //Serial.print("Main::Using reader ");
+      //Serial.print(reader);
+      //Serial.println(" ...");
       RfidData cardContent = cardReader.readRFIDCard(reader);
-      if (cardContent.error().length() == 0) {
-        pixelStrip.setPixelText(reader, cardContent.color());
-        StaticJsonDocument<256> jsonObject;
-        jsonObject["reader"] = reader;
-        jsonObject["color"] = cardContent.color();
-        jsonObject["format"] = cardContent.format();
-        Serial.print("Main::jsonObject -> ");
-        serializeJson(jsonObject, Serial);
-        Serial.println();
-        jsonArray.add(jsonObject);
+      // test if reader has content
+      if (cardContent.error().length() == 0)
+      {
+        if (readerState.setState(reader, &cardContent))
+        {
+          hasChanged = true;
+        }
       }
-      // delay(100);
     }
-    uint16_t arraySize = jsonArray.memoryUsage();
-    Serial.print("Main::arraySize -> ");
-    Serial.println(arraySize);
-    if(arraySize > 0) {
+    //pixelStrip.setPixelText(reader, readerState.getState(reader).color());
+    pixelStrip.setPixelState(&readerState);
+
+    if (hasChanged)
+    {
+      String jsonString = readerState.toJsonString(true, true);
+      uint16_t arraySize = jsonString.length();
       char results[arraySize];
-      serializeJson(jsonArray, results, arraySize);
-      Serial.print("Main::Result Array -> ");
+      jsonString.toCharArray(results, arraySize);
+
+      Serial.print("Main::Notifying bluetooth master:");
       Serial.println(results);
-      Serial.println("Main::Notifying bluetooth master...");
-      pRfidCharacteristic->setValue((uint8_t*)&results, arraySize);
+      pRfidCharacteristic->setValue(results);
       pRfidCharacteristic->notify();
-    } else {
-      Serial.println("Main::Nothing to notify...");
     }
+    else
+    {
+      //Serial.println("Main::Nothing to notify...");
+    }
+    // delay(1000);
   }
 
   // disconnecting
-  if (!deviceConnected && oldDeviceConnected) {
+  if (!deviceConnected && oldDeviceConnected)
+  {
     Serial.println("Main::Device disconnecting...");
     delay(500); // give the bluetooth stack the chance to get things ready
 
     cardReader.shutdownAllReaders();
-    pixelStrip.switchOffPixel(PIXELCOUNT-1);
+    pixelStrip.switchOffPixel(PIXELCOUNT - 1);
 
     pAdvertising->start();
     Serial.println("Main::Start advertising");
     oldDeviceConnected = deviceConnected;
   }
   // connecting
-  if (deviceConnected && !oldDeviceConnected) {
+  if (deviceConnected && !oldDeviceConnected)
+  {
     Serial.println("Main::Device connecting...");
-    pixelStrip.setPixelRGB(PIXELCOUNT-1, 0, 32, 0);
+    pixelStrip.setPixelRGB(PIXELCOUNT - 1, 0, 32, 0);
     // do stuff here on connecting
     oldDeviceConnected = deviceConnected;
   }
