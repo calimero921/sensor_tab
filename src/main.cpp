@@ -24,9 +24,11 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
-#include <Adafruit_NeoPixel.h>
-#include <SPI.h>
-#include <MFRC522.h>
+#include <ArduinoJson.h>
+
+#include "main.h"
+#include "cardReader.h"
+#include "pixelManager.h"
 
 BLEServer* pServer = NULL;
 BLECharacteristic* pLedCharacteristic = NULL;
@@ -36,17 +38,11 @@ bool oldDeviceConnected = false;
 uint32_t value = 0;
 
 int manufacturer_code = 0xFFFF;
-char* manufacturer_name = "DIPONGO";
-char* device_name = "DIPONGO-TAB-ESP32";
+char manufacturer_name[] = "DIPONGO";
+char device_name[] = "DIPONGO-TAB-ESP32";
 
 BLEAdvertisementData advertisement;
 BLEAdvertising *pAdvertising;
-
-// See the following for generating UUIDs:
-// https://www.uuidgenerator.net/
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define LED_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-#define RFID_CHARACTERISTIC_UUID "bb23e586-ce7c-4bc7-b3fb-b5f88a0f3277"
 
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
@@ -78,22 +74,20 @@ class RfidCharacteristicCallbacks: public BLECharacteristicCallbacks {
     }
 };
 
-// configuration Adafruit_NeoPixel
-#define PINPIXELS 14
-#define NUMPIXELS 8
-Adafruit_NeoPixel pixels(NUMPIXELS, PINPIXELS, NEO_GRB + NEO_KHZ800);
-void switchOffPixels();
+// // configuration Adafruit_NeoPixel
+// Adafruit_NeoPixel pixels(PIXELNUMBER, PIXELDATAPIN, NEO_GRB + NEO_KHZ800);
+PixelManager pixelStrip = PixelManager(PIXELCOUNT);
 
 // configuration MFRC522
-#define MFRC522RESETPIN 22
-#define MFRC522SELECTPIN 21
-
-MFRC522 mfrc522 = MFRC522(MFRC522SELECTPIN, MFRC522RESETPIN);
-void ShowReaderDetails();
+CardReader cardReader = CardReader(MFRC522COUNT);
 
 void setup() {
   Serial.begin(115200);
-  SPI.begin();
+  Serial.println("Main::Setup");
+  pixelStrip.init();
+  cardReader.init();
+
+  pixelStrip.switchOffAllPixels();
 
   // Create the BLE Device
   BLEDevice::init(device_name);
@@ -151,80 +145,67 @@ void setup() {
   pAdvertising->setScanResponse(false);
   pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
   BLEDevice::startAdvertising();
-  Serial.println("Waiting a client connection to notify...");
-
-  // Adafruit_NeoPixel
-  pixels.begin();
-  switchOffPixels();
-
-  // MFRC522
-  mfrc522.PCD_Init();
-  mfrc522.PCD_DumpVersionToSerial();
+  Serial.println("Main::Waiting a client connection to notify...");
 }
 
 void loop() {
-    // notify changed value
-    if (deviceConnected) {
-      pixels.clear();
-      for(int i=0; i<NUMPIXELS; i++) {
-        pixels.setPixelColor(i, pixels.Color(0, 150, 0));
-        pixels.show();
-        delay(50);
-      }
-      for(int i=0; i<NUMPIXELS; i++) {
-        pixels.setPixelColor(i, pixels.Color(0, 0, 0));
-        pixels.show();
-        delay(50);
-      }
-      // Look for new cards
-      if ( ! mfrc522.PICC_IsNewCardPresent()) {
-      	return;
-      }
-      // Select one of the cards
-      if ( ! mfrc522.PICC_ReadCardSerial()) {
-      	return;
-      }
-      // Dump debug info about the card; PICC_HaltA() is automatically called
-      mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
-    }
-    // disconnecting
-    if (!deviceConnected && oldDeviceConnected) {
-        delay(500); // give the bluetooth stack the chance to get things ready
-        pAdvertising->start();
-        // pServer->startAdvertising(); // restart advertising
-        switchOffPixels();
-        Serial.println("start advertising");
-        oldDeviceConnected = deviceConnected;
-    }
-    // connecting
-    if (deviceConnected && !oldDeviceConnected) {
-        // do stuff here on connecting
-        oldDeviceConnected = deviceConnected;
-    }
-}
+  // memset(payload, 0, PAYLOAD_SIZE);
 
-void switchOffPixels() {
-  pixels.clear();
-  for(int i=0; i<NUMPIXELS; i++) {
-    pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+  // notify changed value
+  if (deviceConnected) {
+    Serial.println("Main::Device connected...");
+    StaticJsonDocument<1024> jsonArray;
+    for(int reader = 0; reader < MFRC522COUNT; reader++) {
+      Serial.print("Main::Using reader ");
+      Serial.print(reader);
+      Serial.println(" ...");
+      RfidData cardContent = cardReader.readRFIDCard(reader);
+      if (cardContent.error().length() == 0) {
+        pixelStrip.setPixelText(reader, cardContent.color());
+        StaticJsonDocument<256> jsonObject;
+        jsonObject["reader"] = reader;
+        jsonObject["color"] = cardContent.color();
+        jsonObject["format"] = cardContent.format();
+        Serial.print("Main::jsonObject -> ");
+        serializeJson(jsonObject, Serial);
+        Serial.println();
+        jsonArray.add(jsonObject);
+      }
+      // delay(100);
+    }
+    uint16_t arraySize = jsonArray.memoryUsage();
+    Serial.print("Main::arraySize -> ");
+    Serial.println(arraySize);
+    if(arraySize > 0) {
+      char results[arraySize];
+      serializeJson(jsonArray, results, arraySize);
+      Serial.print("Main::Result Array -> ");
+      Serial.println(results);
+      Serial.println("Main::Notifying bluetooth master...");
+      pRfidCharacteristic->setValue((uint8_t*)&results, arraySize);
+      pRfidCharacteristic->notify();
+    } else {
+      Serial.println("Main::Nothing to notify...");
+    }
   }
-  pixels.show();
-}
 
-void ShowReaderDetails() {
-	// Get the MFRC522 software version
-	byte v = mfrc522.PCD_ReadRegister(mfrc522.VersionReg);
-	Serial.print(F("MFRC522 Software Version: 0x"));
-	Serial.print(v, HEX);
-	if (v == 0x91)
-		Serial.print(F(" = v1.0"));
-	else if (v == 0x92)
-		Serial.print(F(" = v2.0"));
-	else
-		Serial.print(F(" (unknown)"));
-	Serial.println("");
-	// When 0x00 or 0xFF is returned, communication probably failed
-	if ((v == 0x00) || (v == 0xFF)) {
-		Serial.println(F("WARNING: Communication failure, is the MFRC522 properly connected?"));
-	}
+  // disconnecting
+  if (!deviceConnected && oldDeviceConnected) {
+    Serial.println("Main::Device disconnecting...");
+    delay(500); // give the bluetooth stack the chance to get things ready
+
+    cardReader.shutdownAllReaders();
+    pixelStrip.switchOffPixel(PIXELCOUNT-1);
+
+    pAdvertising->start();
+    Serial.println("Main::Start advertising");
+    oldDeviceConnected = deviceConnected;
+  }
+  // connecting
+  if (deviceConnected && !oldDeviceConnected) {
+    Serial.println("Main::Device connecting...");
+    pixelStrip.setPixelRGB(PIXELCOUNT-1, 0, 32, 0);
+    // do stuff here on connecting
+    oldDeviceConnected = deviceConnected;
+  }
 }
