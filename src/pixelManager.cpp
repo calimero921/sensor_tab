@@ -1,3 +1,6 @@
+/*
+*/
+
 #include "pixelManager.h"
 #include <Adafruit_NeoPixel.h>
 

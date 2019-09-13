@@ -37,3 +37,7 @@
 .piolibdeps
 .clang_complete
 .gcc-flags.json
+
+# VisualStudioCode
+.vscode/*
+*.code-workspace

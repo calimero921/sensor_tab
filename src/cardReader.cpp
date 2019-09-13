@@ -1,3 +1,6 @@
+/*
+*/
+
 #include "cardReader.h"
 #include <SPI.h>
 #include <NDEF.h>
@@ -22,9 +25,10 @@ CardReader::~CardReader()
 
 void CardReader::init()
 {
-  //Serial.println("CardReader::Card reader initialisation...");
-
-  //Serial.println("CardReader::Card reader selector initialisation...");
+#ifdef DEBUG
+  Serial.println("CardReader::Card reader initialisation...");
+  Serial.println("CardReader::Card reader selector initialisation...");
+#endif
   pinMode(MULTIPLEXADR0, OUTPUT);
   pinMode(MULTIPLEXADR1, OUTPUT);
   pinMode(MULTIPLEXADR2, OUTPUT);

@@ -1,3 +1,6 @@
+/*
+*/
+
 #include "readerState.h"
 
 ReaderState::ReaderState(int nbCardReader)
