@@ -156,13 +156,17 @@ void loop()
   // notify changed value
   if (deviceConnected)
   {
-    //Serial.println("Main::Device connected...");
+#ifdef DEBUG
+    Serial.println("Main::Device connected...");
+#endif
     boolean hasChanged = false;
     for (int reader = 0; reader < MFRC522COUNT; reader++)
     {
-      //Serial.print("Main::Using reader ");
-      //Serial.print(reader);
-      //Serial.println(" ...");
+#ifdef DEBUG
+      Serial.print("Main::Using reader ");
+      Serial.print(reader);
+      Serial.println(" ...");
+#endif
       RfidData cardContent = cardReader.readRFIDCard(reader);
       // test if reader has content
       if (cardContent.error().length() == 0)
@@ -173,7 +177,6 @@ void loop()
         }
       }
     }
-    //pixelStrip.setPixelText(reader, readerState.getState(reader).color());
     pixelStrip.setPixelState(&readerState);
 
     if (hasChanged)
@@ -190,7 +193,9 @@ void loop()
     }
     else
     {
-      //Serial.println("Main::Nothing to notify...");
+#ifdef DEBUG
+      Serial.println("Main::Nothing to notify...");
+#endif
     }
     // delay(1000);
   }

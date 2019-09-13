@@ -57,32 +57,37 @@ void RfidData::setError(String error)
 
 boolean RfidData::equals(RfidData *data)
 {
-  //Serial.println("RfidData::equals:");
+#ifdef DEBUG
+  Serial.println("RfidData::equals:");
+#endif
   boolean result = true;
-
-  //Serial.print("RfidData::equals:compare >");
-  //Serial.print(strColor);
-  //Serial.print("< to >");
-  //Serial.print(data.color());
-  //Serial.print("< => ");
+#ifdef DEBUG
+  Serial.print("RfidData::equals:compare >");
+  Serial.print(strColor);
+  Serial.print("< to >");
+  Serial.print(data.color());
+  Serial.print("< => ");
+#endif
   if (!strColor.equalsIgnoreCase(data->color()))
   {
     result = false;
   }
-  //Serial.println(result);
-
-  //Serial.print("RfidData::equals:compare >");
-  //Serial.print(strFormat);
-  //Serial.print("< to >");
-  //Serial.print(data.format());
-  //Serial.print("< => ");
+#ifdef DEBUG
+  Serial.println(result);
+  Serial.print("RfidData::equals:compare >");
+  Serial.print(strFormat);
+  Serial.print("< to >");
+  Serial.print(data.format());
+  Serial.print("< => ");
+#endif
   if (!strFormat.equalsIgnoreCase(data->format()))
   {
     result = false;
   }
-  //Serial.println(result);
-
-  //Serial.print("RfidData::equals:return ");
-  //Serial.println(result);
+#ifdef DEBUG
+  Serial.println(result);
+  Serial.print("RfidData::equals:return ");
+  Serial.println(result);
+#endif
   return result;
 }

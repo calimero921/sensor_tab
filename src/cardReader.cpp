@@ -34,21 +34,31 @@ void CardReader::init()
   pinMode(MULTIPLEXADR2, OUTPUT);
   pinMode(MULTIPLEXADR3, OUTPUT);
 
+#ifdef DEBUG
   //Serial.println("CardReader::Starting SPI...");
+#endif
   SPI.begin();
 
+#ifdef DEBUG
   //Serial.println("CardReader::Card reader reset...");
+#endif
   for (int i = 0; i < countCardReader; i++)
   {
     // selection du Lecteur
     selectReader(i);
 
     // MFRC522
-    //Serial.println("CardReader::Init...");
+#ifdef DEBUG
+    Serial.println("CardReader::Init...");
+#endif
     board.PCD_Init();
-    //Serial.println("CardReader::Version...");
+#ifdef DEBUG
+    Serial.println("CardReader::Version...");
+#endif
     board.PCD_DumpVersionToSerial();
-    //Serial.println("CardReader::Power off...");
+#ifdef DEBUG
+    Serial.println("CardReader::Power off...");
+#endif
     board.PCD_SoftPowerDown();
   }
 }
@@ -60,25 +70,35 @@ RfidData CardReader::readRFIDCard(int reader)
   char payload[PAYLOAD_SIZE] = {};
   memset(payload, 0, PAYLOAD_SIZE);
 
-  //Serial.print("CardReader::Reader ");
-  //Serial.print(reader);
-  //Serial.println(" ...");
+#ifdef DEBUG
+  Serial.print("CardReader::Reader ");
+  Serial.print(reader);
+  Serial.println(" ...");
+#endif
   selectReader(reader);
 
   // Look for new cards
-  //Serial.println("CardReader::Check card available");
+#ifdef DEBUG
+  Serial.println("CardReader::Check card available");
+#endif
   if (!board.PICC_IsNewCardPresent())
   {
-    //Serial.println("CardReader::No new card to read");
+#ifdef DEBUG
+    Serial.println("CardReader::No new card to read");
+#endif
     result.setError("Error no new card to read");
     return result;
   }
 
   // Select one of the cards
-  //Serial.println("CardReader::Check card serial");
+#ifdef DEBUG
+  Serial.println("CardReader::Check card serial");
+#endif
   if (!board.PICC_ReadCardSerial())
   {
-    //Serial.println("CardReader::Your tag has no serial number");
+#ifdef DEBUG
+    Serial.println("CardReader::Your tag has no serial number");
+#endif
     result.setError("Error Your tag has no serial number");
     return result;
   }
@@ -170,7 +190,9 @@ RfidData CardReader::readRFIDCard(int reader)
   }
   Serial.println();
 
-  //Serial.println("CardReader::Stoping card reader");
+#ifdef DEBUG
+  Serial.println("CardReader::Stoping card reader");
+#endif
   // Halt PICC
   board.PICC_HaltA();
   // Stop encryption on PCD
@@ -184,7 +206,9 @@ RfidData CardReader::convertMessage(char *message)
   RfidData result = RfidData();
   jsonDocument.clear();
 
+#ifdef DEBUG
   Serial.println("CardReader::convertMessage:");
+#endif
   FOUND_MESSAGE decodedMessage = NDEF().decode_message((uint8_t *)message);
 
   if (!decodedMessage.error)
@@ -196,7 +220,9 @@ RfidData CardReader::convertMessage(char *message)
     Serial.print("CardReader::convertMessage:payload : ");
     Serial.println((char *)decodedMessage.payload);
 
+#ifdef DEBUG
     Serial.println("CardReader::convertMessage:deserialization:");
+#endif
     // Deserialize the JSON document
     DeserializationError error = deserializeJson(jsonDocument, (char *)decodedMessage.payload);
 
@@ -242,23 +268,32 @@ void CardReader::shutdownReader(int reader)
 
 void CardReader::selectReader(int reader)
 {
-  //Serial.print("CardReader::Select reader to call : ");
-  //Serial.print(reader);
-
-  //Serial.print(" -> 0x");
   // selection du lecteur par le multiplexeur
-  //Serial.print(bitRead(reader, 3) == 0 ? LOW : HIGH);
+#ifdef DEBUG
+  Serial.print("CardReader::Select reader to call : ");
+  Serial.print(reader);
+  Serial.print(" -> 0x");
+  Serial.print(bitRead(reader, 3) == 0 ? LOW : HIGH);
+#endif
   digitalWrite(MULTIPLEXADR2, bitRead(reader, 3) == 0 ? LOW : HIGH);
 
-  //Serial.print(bitRead(reader, 2) == 0 ? LOW : HIGH);
+#ifdef DEBUG
+  Serial.print(bitRead(reader, 2) == 0 ? LOW : HIGH);
+#endif
   digitalWrite(MULTIPLEXADR2, bitRead(reader, 2) == 0 ? LOW : HIGH);
 
-  //Serial.print(bitRead(reader, 1) == 0 ? LOW : HIGH);
+#ifdef DEBUG
+  Serial.print(bitRead(reader, 1) == 0 ? LOW : HIGH);
+#endif
   digitalWrite(MULTIPLEXADR1, bitRead(reader, 1) == 0 ? LOW : HIGH);
 
-  //Serial.print(bitRead(reader, 0) == 0 ? LOW : HIGH);
+#ifdef DEBUG
+  Serial.print(bitRead(reader, 0) == 0 ? LOW : HIGH);
+#endif
   digitalWrite(MULTIPLEXADR0, bitRead(reader, 0) == 0 ? LOW : HIGH);
-  //Serial.println();
+#ifdef DEBUG
+  Serial.println();
+#endif
 }
 
 void CardReader::readBlock(byte index, byte *buffer)
@@ -286,9 +321,12 @@ void CardReader::readBlock(byte index, byte *buffer)
     }
     break;
   }
-  // Serial.print(F("Using the following key:"));
-  // printHex(key.keyByte, MFRC522::MF_KEY_SIZE);
-  //Serial.println();
+
+#ifdef DEBUG
+  Serial.print(F("Using the following key:"));
+  printHex(key.keyByte, MFRC522::MF_KEY_SIZE);
+  Serial.println();
+#endif
 
   status = board.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, index, &key, &(board.uid)); //line 834 of MFRC522.cpp file
   if (status != MFRC522::STATUS_OK)
@@ -316,7 +354,9 @@ void CardReader::readBlock(byte index, byte *buffer)
 
 byte *CardReader::longToByteArray(long inLong)
 {
-  //Serial.println("CardReader::longToByteArray");
+#ifdef DEBUG
+  Serial.println("CardReader::longToByteArray");
+#endif
   byte *outArray = {};
   outArray[0] = inLong;
   outArray[1] = (inLong >> 8);

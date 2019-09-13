@@ -14,3 +14,5 @@
 
 // configuration MFRC522
 #define MFRC522COUNT 3
+
+//#define DEBUG

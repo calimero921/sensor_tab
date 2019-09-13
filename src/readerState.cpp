@@ -21,7 +21,9 @@ uint16_t ReaderState::count()
 
 boolean ReaderState::setState(uint16_t reader, RfidData *data)
 {
-    //Serial.println("ReaderState::setState:");
+#ifdef DEBUG
+    Serial.println("ReaderState::setState:");
+#endif
     boolean result = true;
     if (data->error().length() > 0)
     {
@@ -41,8 +43,10 @@ boolean ReaderState::setState(uint16_t reader, RfidData *data)
             readerState[reader].set(data);
         }
     }
-    //Serial.print("ReaderState::setState:return ");
-    //Serial.println(result);
+#ifdef DEBUG
+    Serial.print("ReaderState::setState:return ");
+    Serial.println(result);
+#endif
     return result;
 }
 
@@ -67,19 +71,23 @@ String ReaderState::toJsonString(boolean colorSelector, boolean formatSelector)
         {
             jsonObject["format"] = readerState[reader].format();
         }
+#ifdef DEBUG
         Serial.print("toJsonString::jsonObject -> ");
         serializeJson(jsonObject, Serial);
         Serial.println();
+#endif
         jsonArray.add(jsonObject);
     }
-
     uint16_t arraySize = jsonArray.memoryUsage();
+#ifdef DEBUG
     Serial.print("toJsonString::arraySize -> ");
     Serial.println(arraySize);
-
+#endif
     char results[arraySize];
     serializeJson(jsonArray, results, arraySize);
+#ifdef DEBUG
     Serial.print("toJsonString::result -> ");
     Serial.println(results);
+#endif
     return String(results);
 }
