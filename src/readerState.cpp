@@ -7,6 +7,11 @@ ReaderState::ReaderState(int nbCardReader)
 {
     countCardReader = nbCardReader;
     readerState = (RfidData *)calloc(countCardReader, sizeof(RfidData));
+    // Initialisation du tableau
+    for(uint16_t i = 0; i < countCardReader; i++)
+    {
+        readerState[i] = RfidData();
+    }
 }
 
 ReaderState::~ReaderState()

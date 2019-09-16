@@ -24,7 +24,12 @@
 
 #define PAYLOAD_SIZE 1024
 
-//#define DEBUG
+#define SECTORCOUNT 16
+#define BLOCKPERSECTOR 4 
+#define BLOCKSIZE 16
+
+#define INFO
+// #define DEBUG
 
 class CardReader
 {
@@ -32,15 +37,15 @@ public:
   CardReader(int nbCardReader);
   ~CardReader();
   void init();
-  RfidData readRFIDCard(int reader);
+  RfidData readRFIDCard(uint16_t reader);
   void shutdownAllReaders();
-  void shutdownReader(int reader);
+  void shutdownReader(uint16_t reader);
 
 private:
   uint16_t countCardReader;
   MFRC522 board;
 
-  void selectReader(int reader);
+  void selectReader(uint16_t reader);
   void readBlock(byte index, byte *buffer);
   RfidData convertMessage(char *message);
 
