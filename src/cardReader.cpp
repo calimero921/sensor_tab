@@ -13,18 +13,15 @@ byte keyBArray[] = {0xD3, 0xF7, 0xD3, 0xF7, 0xD3, 0xF7};
 
 StaticJsonDocument<1024> jsonDocument;
 
-CardReader::CardReader(int nbCardReader)
-{
+CardReader::CardReader(int nbCardReader) {
   countCardReader = nbCardReader;
   board = MFRC522(MFRC522SDAPIN, MFRC522RESETPIN);
 }
 
-CardReader::~CardReader()
-{
+CardReader::~CardReader() {
 }
 
-void CardReader::init()
-{
+void CardReader::init() {
 #ifdef DEBUG
   Serial.println("CardReader::Card reader initialisation...");
   Serial.println("CardReader::Card reader selector initialisation...");
@@ -42,16 +39,11 @@ void CardReader::init()
 #ifdef DEBUG
   //Serial.println("CardReader::Card reader reset...");
 #endif
-  for (int i = 0; i < countCardReader; i++)
-  {
+  for (int i = 0; i < countCardReader; i++) {
     // selection du Lecteur
     selectReader(i);
 
     // MFRC522
-#ifdef DEBUG
-    Serial.println("CardReader::Init...");
-#endif
-    board.PCD_Init();
 #ifdef DEBUG
     Serial.println("CardReader::Version...");
 #endif
@@ -63,8 +55,7 @@ void CardReader::init()
   }
 }
 
-RfidData CardReader::readRFIDCard(uint16_t reader)
-{
+RfidData CardReader::readRFIDCard(uint16_t reader) {
   RfidData result = RfidData();
 
   char payload[PAYLOAD_SIZE] = {};
@@ -85,8 +76,7 @@ RfidData CardReader::readRFIDCard(uint16_t reader)
 #ifdef DEBUG
   Serial.println("CardReader::readRFIDCard:Check card available");
 #endif
-  if (!board.PICC_IsNewCardPresent())
-  {
+  if (!board.PICC_IsNewCardPresent()) {
 #ifdef DEBUG
     Serial.println("CardReader::readRFIDCard:No new card to read");
 #endif
@@ -98,8 +88,7 @@ RfidData CardReader::readRFIDCard(uint16_t reader)
 #ifdef DEBUG
   Serial.println("CardReader::readRFIDCard:Check card serial");
 #endif
-  if (!board.PICC_ReadCardSerial())
-  {
+  if (!board.PICC_ReadCardSerial()) {
 #ifdef DEBUG
     Serial.println("CardReader::readRFIDCard:Your tag has no serial number");
 #endif
@@ -114,8 +103,7 @@ RfidData CardReader::readRFIDCard(uint16_t reader)
   // Check is the PICC of Classic MIFARE type
   if (piccType != MFRC522::PICC_TYPE_MIFARE_MINI &&
       piccType != MFRC522::PICC_TYPE_MIFARE_1K &&
-      piccType != MFRC522::PICC_TYPE_MIFARE_4K)
-  {
+      piccType != MFRC522::PICC_TYPE_MIFARE_4K) {
     Serial.println(F("CardReader::readRFIDCard:Your tag is not of type MIFARE Classic."));
     result.setError("Error your tag is not of type MIFARE Classic");
     return result;
@@ -126,16 +114,14 @@ RfidData CardReader::readRFIDCard(uint16_t reader)
   Serial.println();
 
   uint16_t count = 0;
-  for (byte sector = 0; sector < SECTORCOUNT; sector++)
-  {
+  for (byte sector = 0; sector < SECTORCOUNT; sector++) {
 #ifdef INFO
     Serial.println("");
     Serial.print("CardReader::readRFIDCard:----------------------------- Sector");
     printHex(&sector, 1);
     Serial.println(" ------------------------------");
 #endif
-    for (byte line = 0; line < BLOCKPERSECTOR; line++)
-    {
+    for (byte line = 0; line < BLOCKPERSECTOR; line++) {
       byte buffer[BLOCKSIZE];
       memset(buffer, 0, BLOCKSIZE * sizeof(byte));
 #ifdef DEBUG
@@ -154,12 +140,9 @@ RfidData CardReader::readRFIDCard(uint16_t reader)
       printHex(buffer, BLOCKSIZE);
       Serial.print("  ");
 #endif
-      for (uint8_t i = 0; i < BLOCKSIZE; i++)
-      {
-        if (sector > 0)
-        {
-          if (line != 3)
-          {
+      for (uint8_t i = 0; i < BLOCKSIZE; i++) {
+        if (sector > 0) {
+          if (line != 3) {
             payload[count] = buffer[i];
             count++;
           }
@@ -183,25 +166,20 @@ RfidData CardReader::readRFIDCard(uint16_t reader)
 #endif
 
   char message[PAYLOAD_SIZE] = {};
-  for (int i = 0; i < count; i++)
-  {
-    if (i > 1)
-    {
+  for (int i = 0; i < count; i++) {
+    if (i > 1) {
       message[i - 2] = payload[i];
     }
   }
 
   result = convertMessage(message);
-  if (result.error().length() == 0)
-  {
+  if (result.error().length() == 0) {
     Serial.print(F("CardReader::readRFIDCard:color : "));
     Serial.println(result.color());
 
     Serial.print(F("CardReader::readRFIDCard:format: "));
     Serial.println(result.format());
-  }
-  else
-  {
+  } else {
     Serial.println(F("CardReader::readRFIDCard:Sending error"));
     result.setError("Error reading card");
   }
@@ -214,16 +192,13 @@ RfidData CardReader::readRFIDCard(uint16_t reader)
   return result;
 }
 
-void CardReader::shutdownAllReaders()
-{
-  for (uint16_t reader = 0; reader < countCardReader; reader++)
-  {
+void CardReader::shutdownAllReaders() {
+  for (uint16_t reader = 0; reader < countCardReader; reader++) {
     shutdownReader(reader);
   }
 }
 
-void CardReader::shutdownReader(uint16_t reader)
-{
+void CardReader::shutdownReader(uint16_t reader) {
   selectReader(reader);
   // Halt PICC
   board.PICC_HaltA();
@@ -232,8 +207,7 @@ void CardReader::shutdownReader(uint16_t reader)
   board.PCD_SoftPowerDown();
 }
 
-void CardReader::selectReader(uint16_t reader)
-{
+void CardReader::selectReader(uint16_t reader) {
   // selection du lecteur par le multiplexeur
 #ifdef DEBUG
   Serial.print("CardReader::Select reader to call : ");
@@ -260,15 +234,23 @@ void CardReader::selectReader(uint16_t reader)
 #ifdef DEBUG
   Serial.println();
 #endif
+
+#ifdef DEBUG
+  Serial.print("CardReader::init reader  : ");
+  Serial.print(reader);
+#endif
+  board.PCD_Init();
+  delay(5);
+#ifdef DEBUG
+  Serial.println();
+#endif
 }
 
-void CardReader::readBlock(byte index, byte *buffer)
-{
+void CardReader::readBlock(byte index, byte *buffer) {
   MFRC522::MIFARE_Key key;
   MFRC522::StatusCode status;
 
-  switch (index)
-  {
+  switch (index) {
   case 0:
   case 1:
   case 2:
@@ -286,32 +268,26 @@ void CardReader::readBlock(byte index, byte *buffer)
 #endif
 
   status = board.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, index, &key, &board.uid); //line 834 of MFRC522.cpp file
-  if (status != MFRC522::STATUS_OK)
-  {
+  if (status != MFRC522::STATUS_OK) {
 #ifdef INFO
     Serial.print(F("CardReader::readBlock:Authentication failed: "));
     Serial.println(F(board.GetStatusCodeName(status)));
 #endif
-  }
-  else
-  {
+  } else {
     //initialisation du buffer de block
     byte blockSize = BLOCKSIZE + 2;
     byte blockBuffer[blockSize];
     memset(blockBuffer, 0, blockSize * sizeof(byte));
 
     status = board.MIFARE_Read(index, blockBuffer, &blockSize);
-    if (status != MFRC522::STATUS_OK)
-    {
+    if (status != MFRC522::STATUS_OK) {
 #ifdef INFO
       Serial.print(F("CardReader::readBlock:Reading failed: "));
       Serial.println(F(board.GetStatusCodeName(status)));
 #endif
-    }
-    else 
-    {
+    } else {
 #ifdef INFO
-      Serial.print("CardReader::readBlock:blockBuffer:             ");
+      Serial.print(F("CardReader::readBlock:blockBuffer:             "));
       printHex(blockBuffer, BLOCKSIZE);
       Serial.println();
 #endif
@@ -325,57 +301,49 @@ void CardReader::readBlock(byte index, byte *buffer)
 #endif
 }
 
-RfidData CardReader::convertMessage(char *message)
-{
+RfidData CardReader::convertMessage(char *message) {
   RfidData result = RfidData();
   jsonDocument.clear();
 
 #ifdef DEBUG
-  Serial.println("CardReader::convertMessage:");
+  Serial.println(F("CardReader::convertMessage:"));
 #endif
   FOUND_MESSAGE decodedMessage = NDEF().decode_message((uint8_t *)message);
 
-  if (!decodedMessage.error)
-  {
+  if (!decodedMessage.error) {
     Serial.print(F("CardReader::convertMessage:type : "));
-    Serial.println(decodedMessage.type);
+    Serial.println(F(decodedMessage.type));
     Serial.print(F("CardReader::convertMessage:format : "));
-    Serial.println(decodedMessage.format);
+    Serial.println(F(decodedMessage.format));
     Serial.print(F("CardReader::convertMessage:payload : "));
-    Serial.println((char *)decodedMessage.payload);
+    Serial.println(F((char *)decodedMessage.payload));
 
 #ifdef DEBUG
-    Serial.println("CardReader::convertMessage:deserialization:");
+    Serial.println(F("CardReader::convertMessage:deserialization:"));
 #endif
     // Deserialize the JSON document
     DeserializationError error = deserializeJson(jsonDocument, (char *)decodedMessage.payload);
 
     // Test if parsing succeeds.
-    if (error)
-    {
+    if (error) {
       Serial.print(F("CardReader::convertMessage:deserialization failed: "));
-      Serial.println(error.c_str());
+      Serial.println(F(error.c_str()));
       result.setError(error.c_str());
-    }
-    else
-    {
+    } else {
       Serial.println(F("CardReader::convertMessage:formating content:"));
       result.setColor(jsonDocument["color"]);
       result.setFormat(jsonDocument["format"]);
     }
-  }
-  else
-  {
+  } else {
     Serial.println(F("CardReader::Sending error reading tag:"));
     result.setError("error reading tag");
   }
   return result;
 }
 
-byte *CardReader::longToByteArray(long inLong)
-{
+byte *CardReader::longToByteArray(long inLong) {
 #ifdef DEBUG
-  Serial.println("CardReader::longToByteArray");
+  Serial.println(F("CardReader::longToByteArray"));
 #endif
   byte *outArray = {};
   outArray[0] = inLong;
@@ -388,10 +356,8 @@ byte *CardReader::longToByteArray(long inLong)
 /**
 * Helper routine to dump a byte array as hex values to Serial.
 */
-void CardReader::printHex(byte *buffer, byte bufferSize)
-{
-  for (byte i = 0; i < bufferSize; i++)
-  {
+void CardReader::printHex(byte *buffer, byte bufferSize) {
+  for (byte i = 0; i < bufferSize; i++) {
     Serial.print(F(buffer[i] < 0x10 ? " 0" : " "));
     Serial.print(buffer[i], HEX);
   }
@@ -400,10 +366,8 @@ void CardReader::printHex(byte *buffer, byte bufferSize)
 /**
 * Helper routine to dump a byte array as char values to Serial.
 */
-void CardReader::printChar(byte *buffer, byte bufferSize)
-{
-  for (byte i = 0; i < bufferSize; i++)
-  {
+void CardReader::printChar(byte *buffer, byte bufferSize) {
+  for (byte i = 0; i < bufferSize; i++) {
     Serial.write(buffer[i]);
   }
 }
@@ -411,10 +375,8 @@ void CardReader::printChar(byte *buffer, byte bufferSize)
 /**
 * Helper routine to dump a byte array as dec values to Serial.
 */
-void CardReader::printDec(byte *buffer, byte bufferSize)
-{
-  for (byte i = 0; i < bufferSize; i++)
-  {
+void CardReader::printDec(byte *buffer, byte bufferSize) {
+  for (byte i = 0; i < bufferSize; i++) {
     Serial.print(F(buffer[i] < 0x10 ? " 0" : " "));
     Serial.print(buffer[i], DEC);
   }

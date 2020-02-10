@@ -76,7 +76,7 @@ class RfidCharacteristicCallbacks : public BLECharacteristicCallbacks
 {
   void onRead(BLECharacteristic *pCharacteristic)
   {
-    String jsonString = readerState.toJsonString(false, true);
+    String jsonString = readerState.toJsonString(true, true);
     uint16_t arraySize = jsonString.length();
     char results[arraySize];
     jsonString.toCharArray(results, arraySize);
