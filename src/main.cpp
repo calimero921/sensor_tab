@@ -177,7 +177,7 @@ void loop()
         }
       }
     }
-    pixelStrip.setPixelState(&readerState);
+    //pixelStrip.setPixelState(&readerState);
 
     if (hasChanged)
     {
@@ -217,7 +217,7 @@ void loop()
   if (deviceConnected && !oldDeviceConnected)
   {
     Serial.println("Main::Device connecting...");
-    pixelStrip.setPixelRGB(PIXELCOUNT - 1, 0, 32, 0);
+    //pixelStrip.setPixelRGB(PIXELCOUNT - 1, 0, 32, 0);
     // do stuff here on connecting
     oldDeviceConnected = deviceConnected;
   }

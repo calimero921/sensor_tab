@@ -10,9 +10,9 @@
 #define RFID_CHARACTERISTIC_UUID "bb23e586-ce7c-4bc7-b3fb-b5f88a0f3277"
 
 // configuration Adafruit_NeoPixel
-#define PIXELCOUNT 8
+#define PIXELCOUNT 9
 
 // configuration MFRC522
-#define MFRC522COUNT 3
+#define MFRC522COUNT 9
 
 //#define DEBUG

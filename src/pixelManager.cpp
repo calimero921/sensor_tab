@@ -28,6 +28,12 @@ void PixelManager::init()
   Serial.println("PixelManager::Pixel manager starting...");
 #endif
   pixels.begin();
+  for (int i = 0; i < pixelCount; i++)
+  {
+    setPixelRGB(i, 255, 0, 0);
+    delay(500);
+    switchOffPixel(i);
+  }
 }
 
 void PixelManager::switchOffAllPixels()
