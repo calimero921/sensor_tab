@@ -8,7 +8,7 @@
 #include <BLE2902.h>
 
 #include "main.h"
-#include "cardReader.h"
+#include "cardReader.h" 
 #include "rfidData.h"
 #include "pixelManager.h"
 #include "readerState.h"
@@ -84,14 +84,13 @@ class RfidCharacteristicCallbacks : public BLECharacteristicCallbacks
   }
 };
 
-void setup()
-{
+void setup()  {
   Serial.begin(115200);
   Serial.println("Main::Setup");
 
   pixelStrip.init();
   pixelStrip.switchOffAllPixels();
-
+  
   cardReader.init();
 
   // Create the BLE Device
@@ -151,8 +150,9 @@ void setup()
   Serial.println("Main::Waiting a client connection to notify...");
 }
 
-void loop()
-{
+void loop() {
+
+  //Serial.println("Main::Device not connected...");
   // notify changed value
   if (deviceConnected)
   {
@@ -173,6 +173,7 @@ void loop()
       {
         if (readerState.setState(reader, &cardContent))
         {
+          //pixelStrip.setPixelState(&readerState);
           hasChanged = true;
         }
       }
@@ -181,6 +182,8 @@ void loop()
 
     if (hasChanged)
     {
+      pixelStrip.switchOffPixel(8); //added
+      pixelStrip.setPixelState(&readerState);
       String jsonString = readerState.toJsonString(true, true);
       uint16_t arraySize = jsonString.length();
       char results[arraySize];
@@ -197,7 +200,7 @@ void loop()
       Serial.println("Main::Nothing to notify...");
 #endif
     }
-    // delay(1000);
+     //delay(1000);
   }
 
   // disconnecting
@@ -207,7 +210,7 @@ void loop()
     delay(500); // give the bluetooth stack the chance to get things ready
 
     cardReader.shutdownAllReaders();
-    pixelStrip.switchOffPixel(PIXELCOUNT - 1);
+    pixelStrip.switchOffPixel(8);
 
     pAdvertising->start();
     Serial.println("Main::Start advertising");
@@ -216,8 +219,13 @@ void loop()
   // connecting
   if (deviceConnected && !oldDeviceConnected)
   {
-    Serial.println("Main::Device connecting...");
-    //pixelStrip.setPixelRGB(PIXELCOUNT - 1, 0, 32, 0);
+    Serial.println("Main::Device connecting..."); //addded
+     for (int l = 0; l < 9; l++)
+       {
+     pixelStrip.setPixelRGB(l,0,32,0);
+     
+      }
+    
     // do stuff here on connecting
     oldDeviceConnected = deviceConnected;
   }
