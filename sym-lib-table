@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name RFID_Multiplexeur_final_with_foot-rescue)(type Legacy)(uri ${KIPRJMOD}/RFID_Multiplexeur_final_with_foot-rescue.lib)(options "")(descr ""))
+)
