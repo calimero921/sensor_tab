@@ -1,5 +1,4 @@
-/*
-*/
+
 
 #ifndef RfidData_H
 #define RfidData_H

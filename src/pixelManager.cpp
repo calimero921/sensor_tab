@@ -107,7 +107,7 @@ void PixelManager::setPixelColor(uint16_t pixelNum, uint32_t pixelColor)
 
 void PixelManager::setPixelRGB(uint16_t pixelNum, uint16_t pixelRed, uint16_t pixelGreen, uint16_t pixelBlue)
 {
-  pixels.clear();
+  //pixels.clear();
   pixels.setPixelColor(pixelNum, pixelRed, pixelGreen, pixelBlue);
   pixels.show();
 }

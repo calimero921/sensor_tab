@@ -1,12 +1,11 @@
-/*
-*/
+
 
 #ifndef CardReader_H
 #define CardReader_H
 
 #include "Arduino.h"
 #include <MFRC522.h>
-#include <ArduinoJson.h>
+#include <ArduinoJson.h >
 #include "rfidData.h"
 
 // configuration multiplexeur

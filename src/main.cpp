@@ -6,9 +6,11 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <Battery.h>
+// for battery sensing please install - > Battery Sense by AgileWare
 
 #include "main.h"
-#include "cardReader.h"
+#include "cardReader.h" 
 #include "rfidData.h"
 #include "pixelManager.h"
 #include "readerState.h"
@@ -16,6 +18,10 @@
 BLEServer *pServer = NULL;
 BLECharacteristic *pLedCharacteristic = NULL;
 BLECharacteristic *pRfidCharacteristic = NULL;
+BLECharacteristic *pBatLevelCharacteristic = NULL;
+
+float batlevel= 0;
+Battery battery(3400, 5000, BatLevelpin);
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 uint32_t value = 0;
@@ -83,15 +89,24 @@ class RfidCharacteristicCallbacks : public BLECharacteristicCallbacks
     pCharacteristic->setValue(results);
   }
 };
-
-void setup()
+class BatLevelCharacteristicCallbacks : public BLECharacteristicCallbacks
 {
+  void onRead(BLECharacteristic *pCharacteristic)
+  {
+      batlevel=battery.level();
+     pBatLevelCharacteristic->setValue(batlevel);
+
+  }
+};
+
+void setup()  {
   Serial.begin(115200);
   Serial.println("Main::Setup");
-
+  pinMode(BatLevelpin, INPUT);
+  battery.begin(5000, 1.0);
   pixelStrip.init();
   pixelStrip.switchOffAllPixels();
-
+  
   cardReader.init();
 
   // Create the BLE Device
@@ -138,7 +153,16 @@ void setup()
   // Create a BLE Descriptor
   pRfidCharacteristic->addDescriptor(new BLE2902());
   pRfidCharacteristic->setCallbacks(new RfidCharacteristicCallbacks());
-
+  // Create a BLE led Characteristic
+  pBatLevelCharacteristic = pService->createCharacteristic(
+      BatLevel_CHARACTERISTIC_UUID,
+      BLECharacteristic::PROPERTY_READ |
+          BLECharacteristic::PROPERTY_NOTIFY |
+          BLECharacteristic::PROPERTY_INDICATE);
+  // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
+  // Create a BLE Descriptor
+  pBatLevelCharacteristic->addDescriptor(new BLE2902());
+  pBatLevelCharacteristic->setCallbacks(new BatLevelCharacteristicCallbacks());
   // Start the service
   pService->start();
 
@@ -151,11 +175,17 @@ void setup()
   Serial.println("Main::Waiting a client connection to notify...");
 }
 
-void loop()
-{
+void loop() {
+
+   //recuperation de la valeur de tension sur la batterie 
+ 
+  //Serial.println("Main::Device not connected...");
   // notify changed value
   if (deviceConnected)
   {
+      batlevel=battery.level();
+     pBatLevelCharacteristic->setValue(batlevel);
+      pBatLevelCharacteristic->notify();
 #ifdef DEBUG
     Serial.println("Main::Device connected...");
 #endif
@@ -173,6 +203,7 @@ void loop()
       {
         if (readerState.setState(reader, &cardContent))
         {
+          //pixelStrip.setPixelState(&readerState);
           hasChanged = true;
         }
       }
@@ -181,6 +212,8 @@ void loop()
 
     if (hasChanged)
     {
+      pixelStrip.switchOffPixel(8); //added
+      pixelStrip.setPixelState(&readerState);
       String jsonString = readerState.toJsonString(true, true);
       uint16_t arraySize = jsonString.length();
       char results[arraySize];
@@ -190,6 +223,7 @@ void loop()
       Serial.println(results);
       pRfidCharacteristic->setValue(results);
       pRfidCharacteristic->notify();
+      
     }
     else
     {
@@ -197,7 +231,7 @@ void loop()
       Serial.println("Main::Nothing to notify...");
 #endif
     }
-    // delay(1000);
+     //delay(1000);
   }
 
   // disconnecting
@@ -207,7 +241,7 @@ void loop()
     delay(500); // give the bluetooth stack the chance to get things ready
 
     cardReader.shutdownAllReaders();
-    pixelStrip.switchOffPixel(PIXELCOUNT - 1);
+    pixelStrip.switchOffPixel(8);
 
     pAdvertising->start();
     Serial.println("Main::Start advertising");
@@ -216,8 +250,13 @@ void loop()
   // connecting
   if (deviceConnected && !oldDeviceConnected)
   {
-    Serial.println("Main::Device connecting...");
-    //pixelStrip.setPixelRGB(PIXELCOUNT - 1, 0, 32, 0);
+    Serial.println("Main::Device connecting..."); //addded
+     for (int l = 0; l < 9; l++)
+       {
+     pixelStrip.setPixelRGB(l,0,32,0);
+     
+      }
+    
     // do stuff here on connecting
     oldDeviceConnected = deviceConnected;
   }

@@ -4,6 +4,10 @@
 #include "cardReader.h"
 #include <SPI.h>
 #include <NDEF.h>
+#include "rfidData.h"
+#include <MFRC522.h>
+
+
 
 // Prepare the key (used both as key A and as key B)
 // using FFFFFFFFFFFFh which is the default at chip delivery from the factory
@@ -35,6 +39,7 @@ void CardReader::init() {
   //Serial.println("CardReader::Starting SPI...");
 #endif
   SPI.begin();
+  
 
 #ifdef DEBUG
   //Serial.println("CardReader::Card reader reset...");
@@ -46,11 +51,15 @@ void CardReader::init() {
     // MFRC522
 #ifdef DEBUG
     Serial.println("CardReader::Version...");
+    
 #endif
+
+    
     board.PCD_DumpVersionToSerial();
 #ifdef DEBUG
     Serial.println("CardReader::Power off...");
 #endif
+    
     board.PCD_SoftPowerDown();
   }
 }
@@ -71,6 +80,7 @@ RfidData CardReader::readRFIDCard(uint16_t reader) {
 #ifdef DEBUG
   Serial.println("CardReader::readRFIDCard:Crad reader initialization...");
 #endif
+  board.PCD_SetAntennaGain(board.RxGain_max);
   board.PCD_Init();
   // Look for new cards
 #ifdef DEBUG
@@ -171,7 +181,6 @@ RfidData CardReader::readRFIDCard(uint16_t reader) {
       message[i - 2] = payload[i];
     }
   }
-
   result = convertMessage(message);
   if (result.error().length() == 0) {
     Serial.print(F("CardReader::readRFIDCard:color : "));
@@ -215,7 +224,7 @@ void CardReader::selectReader(uint16_t reader) {
   Serial.print(" -> 0x");
   Serial.print(bitRead(reader, 3) == 0 ? LOW : HIGH);
 #endif
-  digitalWrite(MULTIPLEXADR2, bitRead(reader, 3) == 0 ? LOW : HIGH);
+  digitalWrite(MULTIPLEXADR3, bitRead(reader, 3) == 0 ? LOW : HIGH);
 
 #ifdef DEBUG
   Serial.print(bitRead(reader, 2) == 0 ? LOW : HIGH);
@@ -287,9 +296,9 @@ void CardReader::readBlock(byte index, byte *buffer) {
 #endif
     } else {
 #ifdef INFO
-      Serial.print(F("CardReader::readBlock:blockBuffer:             "));
-      printHex(blockBuffer, BLOCKSIZE);
-      Serial.println();
+      //Serial.print(F("CardReader::readBlock:blockBuffer:             "));
+      //printHex(blockBuffer, BLOCKSIZE);
+      //Serial.println();
 #endif
     }
     memcpy(buffer, blockBuffer, BLOCKSIZE);
@@ -301,9 +310,9 @@ void CardReader::readBlock(byte index, byte *buffer) {
 #endif
 }
 
-RfidData CardReader::convertMessage(char *message) {
-  RfidData result = RfidData();
-  jsonDocument.clear();
+  RfidData CardReader::convertMessage(char *message) {
+    RfidData result = RfidData();
+    jsonDocument.clear(); 
 
 #ifdef DEBUG
   Serial.println(F("CardReader::convertMessage:"));
@@ -311,8 +320,8 @@ RfidData CardReader::convertMessage(char *message) {
   FOUND_MESSAGE decodedMessage = NDEF().decode_message((uint8_t *)message);
 
   if (!decodedMessage.error) {
-    Serial.print(F("CardReader::convertMessage:type : "));
-    Serial.println(F(decodedMessage.type));
+    //Serial.print(F("CardReader::convertMessage:type : "));
+    //Serial.println(F(decodedMessage.type));
     Serial.print(F("CardReader::convertMessage:format : "));
     Serial.println(F(decodedMessage.format));
     Serial.print(F("CardReader::convertMessage:payload : "));
@@ -322,6 +331,8 @@ RfidData CardReader::convertMessage(char *message) {
     Serial.println(F("CardReader::convertMessage:deserialization:"));
 #endif
     // Deserialize the JSON document
+        jsonDocument.clear(); 
+
     DeserializationError error = deserializeJson(jsonDocument, (char *)decodedMessage.payload);
 
     // Test if parsing succeeds.

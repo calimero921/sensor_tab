@@ -8,11 +8,13 @@
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define LED_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define RFID_CHARACTERISTIC_UUID "bb23e586-ce7c-4bc7-b3fb-b5f88a0f3277"
+#define BatLevel_CHARACTERISTIC_UUID "358bb528-d8bf-11ea-87d0-0242ac130003"
 
 // configuration Adafruit_NeoPixel
-#define PIXELCOUNT 9
+#define PIXELCOUNT 16
+#define BatLevelpin 4
 
 // configuration MFRC522
-#define MFRC522COUNT 9
+#define MFRC522COUNT 16
 
 //#define DEBUG

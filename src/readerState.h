@@ -1,5 +1,4 @@
-/*
-*/
+
 
 #ifndef ReaderState_H
 #define ReaderState_H
